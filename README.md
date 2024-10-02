@@ -1,11 +1,6 @@
-To install dependencies:
-```sh
-bun install
-```
+Run
 
-To run:
 ```sh
-bun run dev
+npm install
+npx ts-node scrape.ts
 ```
-
-open http://localhost:3000
