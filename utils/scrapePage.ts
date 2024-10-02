@@ -9,7 +9,6 @@ async function scrapePageWithPuppeteer(pageNumber: number, retries: number = 3):
       const browser = await puppeteer.launch({ headless: true });
       const page = await browser.newPage();
 
-      // Set user-agent to avoid detection
       const userAgents = [
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36",
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.1 Safari/605.1.15",
@@ -22,24 +21,20 @@ async function scrapePageWithPuppeteer(pageNumber: number, retries: number = 3):
       const url = `https://www.skool.com/discovery?p=${pageNumber}`;
       const response = await page.goto(url, { waitUntil: "load" });
 
-      // Check for server block
       if (response && response.status() === 403) {
         console.log(`Blocked by server with status ${response.status()} on page ${pageNumber}`);
         await browser.close();
         return [];
       }
 
-      // Simulate human behavior with a random delay
-      const randomDelay = Math.floor(Math.random() * 2000) + 3000; // Random delay between 3-5 seconds
+      const randomDelay = Math.floor(Math.random() * 2000) + 3000;
       await new Promise((resolve) => setTimeout(resolve, randomDelay));
 
-      // Wait for the groups to appear
       await page.waitForSelector(
         ".styled__ChildrenLink-sc-1brgbbt-1.fQYQam.styled__DiscoveryCardLink-sc-13ysp3k-0.eyLtsl",
         { timeout: 30000 }
       );
 
-      // Extract groups
       groups = await page.evaluate(() => {
         const elements = Array.from(
           document.querySelectorAll(
@@ -54,7 +49,6 @@ async function scrapePageWithPuppeteer(pageNumber: number, retries: number = 3):
         }));
       });
 
-      // Close the browser and return the groups
       await browser.close();
       return groups;
     } catch (error) {
@@ -65,14 +59,12 @@ async function scrapePageWithPuppeteer(pageNumber: number, retries: number = 3):
         console.log(`Attempt ${attempts} failed for page ${pageNumber}. Unknown error: ${error}`);
       }
 
-      // If the maximum retries have been reached, log the HTML and skip the page
       if (attempts >= retries) {
         console.log(`Max retries reached for page ${pageNumber}. Skipping...`);
         return groups;
       }
 
-      // Wait before retrying
-      const retryDelay = Math.floor(Math.random() * 2000) + 3000; // Random delay between 3-5 seconds
+      const retryDelay = Math.floor(Math.random() * 2000) + 3000;
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
     }
   }
