@@ -1,70 +1,87 @@
 import puppeteer from "puppeteer";
 
-async function scrapePageWithPuppeteer(pageNumber: number, retries: number = 3): Promise<any[]> {
+async function scrapePageWithPuppeteer(category: { name: string; id: string }, pageNumber: number, retries: number = 3): Promise<any[]> {
   let attempts = 0;
   let groups: any[] = [];
 
   while (attempts < retries) {
     try {
-      const browser = await puppeteer.launch({ headless: true });
+      const browser = await puppeteer.launch({ 
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-infobars', '--window-position=0,0', '--ignore-certifcate-errors', '--ignore-certifcate-errors-spki-list']
+      });
       const page = await browser.newPage();
 
-      const userAgents = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.1 Safari/605.1.15",
-        "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/89.0",
-        "Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.106 Mobile Safari/537.36",
-      ];
-      const userAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
-      await page.setUserAgent(userAgent);
+      // User agent rotation and other setup code...
 
-      const url = `https://www.skool.com/discovery?p=${pageNumber}`;
-      const response = await page.goto(url, { waitUntil: "load" });
+      const url = pageNumber === 1 
+        ? `https://www.skool.com/discovery?c=${category.id}`
+        : `https://www.skool.com/discovery?c=${category.id}&p=${pageNumber}`;
 
-      if (response && response.status() === 403) {
-        console.log(`Blocked by server with status ${response.status()} on page ${pageNumber}`);
-        await browser.close();
-        return [];
-      }
+      console.log(`Accessing URL: ${url}`);
 
-      const randomDelay = Math.floor(Math.random() * 2000) + 3000;
-      await new Promise((resolve) => setTimeout(resolve, randomDelay));
+      await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
 
-      await page.waitForSelector(
-        ".styled__ChildrenLink-sc-1brgbbt-1.fQYQam.styled__DiscoveryCardLink-sc-13ysp3k-0.eyLtsl",
-        { timeout: 30000 }
-      );
+      // Wait for the specific elements we're looking for
+      await page.waitForSelector('.styled__ChildrenLink-sc-1brgbbt-1.fQYQam.styled__DiscoveryCardLink-sc-13ysp3k-0.eyLtsl', { timeout: 30000 });
 
-      groups = await page.evaluate(() => {
-        const elements = Array.from(
-          document.querySelectorAll(
-            "a.styled__ChildrenLink-sc-1brgbbt-1.fQYQam.styled__DiscoveryCardLink-sc-13ysp3k-0.eyLtsl"
-          )
-        );
-        return elements.map((el) => ({
-          title: el.querySelector(".styled__TypographyWrapper-sc-m28jfn-0")?.textContent?.trim() || "",
-          description: el.querySelector(".styled__DiscoveryCardDescription-sc-13ysp3k-5")?.textContent?.trim() || "",
-          members: el.querySelector(".styled__DiscoveryCardMeta-sc-13ysp3k-7")?.textContent?.trim() ?? "",
-          link: el.getAttribute("href") || "",
-        }));
+      // Scroll the page to trigger any lazy-loading
+      await page.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight);
       });
 
+      await new Promise(resolve => setTimeout(resolve, 5000));  // Wait for 5 seconds after scrolling
+
+      const scrapedGroups = await page.evaluate(() => {
+        const elements = Array.from(document.querySelectorAll('.styled__ChildrenLink-sc-1brgbbt-1.fQYQam.styled__DiscoveryCardLink-sc-13ysp3k-0.eyLtsl'));
+        return elements.map((el) => {
+          const titleEl = el.querySelector('.styled__GroupNameWrapper-sc-dph3q3-0');
+          const descriptionEl = el.querySelector('.styled__DiscoveryCardDescription-sc-13ysp3k-5');
+          const metaEl = el.querySelector('.styled__DiscoveryCardMeta-sc-13ysp3k-7');
+          const rankingEl = el.querySelector('.styled__DiscoveryCardRanking-sc-13ysp3k-6');
+          
+          return {
+            title: titleEl ? titleEl.textContent?.trim() : "",
+            description: descriptionEl ? descriptionEl.textContent?.trim() : "",
+            meta: metaEl ? metaEl.textContent?.trim() : "",
+            ranking: rankingEl ? rankingEl.textContent?.trim() : "",
+            link: el.getAttribute('href') || "",
+          };
+        });
+      });
+
+      groups = scrapedGroups.map((group) => ({
+        ...group,
+        category: category.name,
+      }));
+
       await browser.close();
+      
+      if (groups.length === 0) {
+        console.log(`No groups found on page ${pageNumber} for category ${category.name}. This might be the last page.`);
+      } else {
+        console.log(`Scraped ${groups.length} groups from page ${pageNumber} for category ${category.name}`);
+      }
+
       return groups;
     } catch (error) {
       attempts++;
       if (error instanceof Error) {
-        console.log(`Attempt ${attempts} failed for page ${pageNumber}. Error: ${error.message}`);
+        console.log(
+          `Attempt ${attempts} failed for page ${pageNumber} in category ${category.name}. Error: ${error.message}`
+        );
       } else {
-        console.log(`Attempt ${attempts} failed for page ${pageNumber}. Unknown error: ${error}`);
+        console.log(
+          `Attempt ${attempts} failed for page ${pageNumber} in category ${category.name}. Unknown error: ${error}`
+        );
       }
 
       if (attempts >= retries) {
-        console.log(`Max retries reached for page ${pageNumber}. Skipping...`);
+        console.log(`Max retries reached for page ${pageNumber} in category ${category.name}. Skipping...`);
         return groups;
       }
 
-      const retryDelay = Math.floor(Math.random() * 2000) + 3000;
+      const retryDelay = Math.floor(Math.random() * 5000) + 10000;
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
     }
   }
@@ -72,4 +89,8 @@ async function scrapePageWithPuppeteer(pageNumber: number, retries: number = 3):
   return groups;
 }
 
+
 export default scrapePageWithPuppeteer;
+
+
+

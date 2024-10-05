@@ -1,13 +1,13 @@
-// scrape.ts
+import { writeFile } from "fs/promises";
+import scrapeAllCategories from "./utils/scrapeAllPage";
 
-import { scrapeAllPagesWithPuppeteer } from "./utils/scrapeAllPage"; 
-import { writeFile } from "fs/promises"; 
+
 (async () => {
   try {
-    const totalPages = 34; 
-    console.log(`Starting to scrape ${totalPages} pages...`);
+    const totalPages = 34;
+    console.log(`Starting to scrape ${totalPages} pages across all categories...`);
 
-    const allGroups = await scrapeAllPagesWithPuppeteer(totalPages);
+    const allGroups = await scrapeAllCategories(totalPages);
 
     await writeFile("groups.json", JSON.stringify(allGroups, null, 2));
     console.log("Scraping completed. Data saved to groups.json");
