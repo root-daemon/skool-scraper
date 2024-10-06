@@ -7,14 +7,14 @@ function delay(time: number) {
   });
 }
 
-export async function scrapeAllCategories(totalPages: number): Promise<any[]> {
+export async function scrapeAllCategories(): Promise<any[]> {
   let allGroups: any[] = [];
 
   for (const category of categories) {
     console.log(`Scraping category: ${category.name}`);
 
-    for (let i = 1; i <= totalPages; i++) {
-      const groups = await scrapePageWithPuppeteer(category, i);  // Pass the entire category object
+    for (let i = 1; i <= category.pages; i++) {
+      const groups = await scrapePageWithPuppeteer(category, i);
       console.log(`Scraped ${groups.length} groups from page ${i} in category ${category.name}`);
       allGroups = allGroups.concat(groups);
 

@@ -1,13 +1,12 @@
 import { writeFile } from "fs/promises";
 import scrapeAllCategories from "./utils/scrapeAllPage";
-
+import { categories } from "./misc/categories";
 
 (async () => {
   try {
-    const totalPages = 34;
-    console.log(`Starting to scrape ${totalPages} pages across all categories...`);
+    console.log(`Starting to scrape all categories...`);
 
-    const allGroups = await scrapeAllCategories(totalPages);
+    const allGroups = await scrapeAllCategories();
 
     await writeFile("groups.json", JSON.stringify(allGroups, null, 2));
     console.log("Scraping completed. Data saved to groups.json");
