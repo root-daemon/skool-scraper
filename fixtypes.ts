@@ -5,6 +5,7 @@ interface Community {
   description: string;
   meta: string;
   link: string;
+  category: string;
 }
 
 interface ProcessedCommunity {
@@ -14,6 +15,7 @@ interface ProcessedCommunity {
   membersCount: number;
   type: "Paid" | "Free" | { price: string };
   link: string;
+  category: string;
 }
 
 function processMembers(metaStr: string): {
@@ -71,22 +73,20 @@ function loadData(filePath: string): ProcessedCommunity[] {
       membersCount,
       type,
       link: community.link,
+      category: community.category,
     };
   });
-}
+}``
 
-// Save the processed data to a new JSON file
 function saveData(filePath: string, data: ProcessedCommunity[]): void {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
 }
 
-// Example usage
 const inputFilePath = "./groups.json";
 const outputFilePath = "./processed_groups.json";
 try {
   const processedData = loadData(inputFilePath);
 
-  // Save the processed data to a new file
   saveData(outputFilePath, processedData);
 
   console.log(`Processed data saved to ${outputFilePath}`);
